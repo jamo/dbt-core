@@ -306,9 +306,19 @@ class BaseRunner(metaclass=ABCMeta):
                         node_info=ctx.node.node_info,
                     )
                 )
-                with collect_timing_info("execute", ctx.timing.append):
-                    result = self.run(ctx.node, manifest)
-                    ctx.node = result.node
+                
+                # Set the full node in context before execution
+                # This allows adapters to access full node config (e.g., labels)
+                from dbt_common.events.contextvars import set_current_node
+                set_current_node(ctx.node)
+                
+                try:
+                    with collect_timing_info("execute", ctx.timing.append):
+                        result = self.run(ctx.node, manifest)
+                        ctx.node = result.node
+                finally:
+                    # Clean up context after execution
+                    set_current_node(None)
 
         return result
 
